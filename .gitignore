@@ -1,0 +1,8 @@
+*.pyc
+authorize.py
+client_secret.json
+creds.data
+example_downloadimage.py
+example_index.py
+get_oauth2_token.py
+*.db

@@ -1,0 +1,86 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+"""
+PyFingerprint
+Copyright (C) 2015 Bastian Raschke <bastian.raschke@posteo.de>
+All rights reserved.
+
+@author: Bastian Raschke <bastian.raschke@posteo.de>
+"""
+
+import time
+from pyfingerprint.pyfingerprint import PyFingerprint
+import sys
+from id_manager import add_user
+
+
+## Enrolls new finger
+##
+
+## Tries to initialize the sensor
+try:
+    f = PyFingerprint('/dev/ttyUSB0', 57600, 0xFFFFFFFF, 0x00000000)
+
+    if ( f.verifyPassword() == False ):
+        raise ValueError('The given fingerprint sensor password is wrong!')
+
+except Exception as e:
+    print('The fingerprint sensor could not be initialized!')
+    print('Exception message: ' + str(e))
+    exit(1)
+
+## Gets some sensor information
+print('Currently used templates: ' + str(f.getTemplateCount()) +'/'+ str(f.getStorageCapacity()))
+
+## Tries to enroll new finger
+try:
+    print('Waiting for finger...')
+
+    ## Wait that finger is read
+    while ( f.readImage() == False ):
+        pass
+
+    ## Converts read image to characteristics and stores it in charbuffer 1
+    f.convertImage(0x01)
+
+    ## Checks if finger is already enrolled
+    result = f.searchTemplate()
+    positionNumber = result[0]
+
+    if ( positionNumber >= 0 ):
+        print('Template already exists at position #' + str(positionNumber))
+        exit(0)
+
+    print('Remove finger...')
+    time.sleep(2)
+
+    print('Waiting for same finger again...')
+
+    ## Wait that finger is read again
+    while ( f.readImage() == False ):
+        pass
+
+    ## Converts read image to characteristics and stores it in charbuffer 2
+    f.convertImage(0x02)
+
+    ## Compares the charbuffers and creates a template
+    if f.compareCharacteristics() != 0:
+        f.createTemplate()
+        ## Saves template at new position number
+        positionNumber = f.storeTemplate()
+	last_name = raw_input('Input last name: ')
+        first_name = raw_input('Input first name: ')
+        name = last_name.strip() + ', ' + first_name.strip()
+	class_id = raw_input('Insert class id (1 or 2): ')
+	add_user(name, positionNumber, class_id)
+        print('Finger enrolled successfully!')
+        print('New template position #' + str(positionNumber))
+    else:
+        print('Fingerprints do not match')
+   
+
+except Exception as e:
+    print('Operation failed!')
+    print('Exception message: ' + str(e))
+    exit(1)
